@@ -1,5 +1,7 @@
 import { IncomingWebhook } from '@slack/webhook';
+import * as dotenv from 'dotenv';
 
+dotenv.config();
 const webhookUrl = process.env.SLACK_WEBHOOK_URL;
 
 if (!webhookUrl) {

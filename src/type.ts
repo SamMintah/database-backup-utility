@@ -9,10 +9,17 @@ export interface BackupOptions {
 
 export interface RestoreOptions {
   db: string;
+  file?: string;  
   cloud?: {
-    provider: string; 
-    bucketName: string; 
+    provider: string;  
+    bucketName: string;  
   };
+}
+
+
+export interface ScheduleOptions {
+  time: string;
+  backupOption: BackupOptions; 
 }
 
 export interface CloudStorage {

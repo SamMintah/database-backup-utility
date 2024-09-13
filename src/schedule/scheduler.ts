@@ -1,9 +1,10 @@
-import cron from 'node-cron';
+import * as cron from 'node-cron';
 import { backupDatabase } from '../backup/backupService';
-import { BackupOptions } from '../type';
+import { ScheduleOptions} from '../type';
 
-export function scheduleBackup(cronTime: string, backupOptions: BackupOptions) {
-  cron.schedule(cronTime, () => {
-    backupDatabase(backupOptions);
+export function scheduleBackup(options: ScheduleOptions) {
+  const { backupOption,time } = options;
+  cron.schedule(time, () => {
+    backupDatabase(backupOption);
   });
 }

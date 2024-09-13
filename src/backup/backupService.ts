@@ -1,11 +1,12 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import fs from 'fs';
+import * as fs from 'fs';
+import * as path from 'path';
 import { sendSlackNotification } from '../utils/slack';
 import logger from '../utils/logger';
 import { config } from '../config/config';
 import { BackupOptions } from '../type';
-import { compressFile } from './compress';
+import { createZipBackup } from './compress';
 import { createCloudStorageProvider } from '../cloud/storageFactory';
 
 const execPromise = promisify(exec);
@@ -13,24 +14,25 @@ const execPromise = promisify(exec);
 export async function backupDatabase(options: BackupOptions) {
   try {
     const { db, cloud } = options;
+    const globalBackupPath = config.db.backupPath;
 
-    let backupPath: string;
+    if (!globalBackupPath) {
+      throw new Error('Global backup path is not defined in the config.');
+    }
+
+    // Perform the backup based on the database type
     switch (db.toLowerCase()) {
       case 'mysql':
-        await backupMySQL();
-        backupPath = config.db.mysql.backupPath;
+        await backupMySQL(globalBackupPath);
         break;
       case 'postgres':
-        await backupPostgres();
-        backupPath = config.db.postgres.backupPath;
+        await backupPostgres(globalBackupPath);
         break;
       case 'mongodb':
-        await backupMongoDB();
-        backupPath = config.db.mongodb.backupPath;
+        await backupMongoDB(globalBackupPath);
         break;
       case 'sqlite':
-        await backupSQLite();
-        backupPath = config.db.sqlite.backupFilename;
+        await backupSQLite(globalBackupPath);
         break;
       default:
         throw new Error(`Unsupported database type: ${db}`);
@@ -62,27 +64,19 @@ export async function backupDatabase(options: BackupOptions) {
           throw new Error(`Unsupported cloud provider: ${provider}`);
       }
 
-      if (backupPath) {
-        await cloudStorage.upload(backupPath, bucketName);
-      } else {
-        throw new Error(`Backup path for ${db} is not defined`);
-      }
+      await cloudStorage.upload(globalBackupPath, bucketName);
     }
-
-    await compressFile(backupPath);
-
-    await sendSlackNotification('Backup completed successfully!');
-    logger.info('Backup completed successfully');
   } catch (error) {
     logger.error(`Backup failed: ${error}`);
     await sendSlackNotification('Backup failed!');
   }
 }
-async function backupMySQL() {
-  const { host, user, password, database, backupPath } = config.db.mysql;
 
-  if (!host || !user || !password || !database || !backupPath) {
-    throw new Error('MySQL configuration or backup path is not defined');
+async function backupMySQL(backupPath: string) {
+  const { host, user, password, database } = config.db.mysql;
+
+  if (!host || !user || !password || !database) {
+    throw new Error('MySQL configuration is not complete.');
   }
 
   try {
@@ -98,32 +92,40 @@ async function backupMySQL() {
   }
 }
 
-async function backupPostgres() {
-  const { host, user, password, database, backupPath } = config.db.postgres;
+async function backupPostgres(backupPath: string) {
+  const { host, user, password, database } = config.db.postgres;
 
-  if (!host || !user || !password || !database || !backupPath) {
-    throw new Error('PostgreSQL configuration or backup path is not defined');
+  if (!host || !user || !password || !database) {
+    throw new Error('PostgreSQL configuration is not complete.');
   }
 
   try {
-    // Construct the pg_dump command
-    const command = `PGPASSWORD=${password} pg_dump -h ${host} -U ${user} -d ${database} -f ${backupPath}`;
+    // Ensure the backup directory exists
+    if (!fs.existsSync(backupPath)) {
+      fs.mkdirSync(backupPath, { recursive: true });
+      logger.info(`Created backup directory: ${backupPath}`);
+    }
 
-    // Execute the pg_dump command
+    const sqlBackupFilePath = path.join(backupPath, `backup_${new Date().toISOString().split('T')[0]}.sql`);
+    const zipBackupFilePath = path.join(backupPath, `backup_${new Date().toISOString().split('T')[0]}.zip`);
+
+    // Construct the pg_dump command with the file path
+    const command = `PGPASSWORD=${password} pg_dump -h ${host} -U ${user} -d ${database} -f ${sqlBackupFilePath}`;
     await execPromise(command);
 
-    logger.info('PostgreSQL backup completed successfully');
+    // Create a zip file containing the SQL backup
+    await createZipBackup(sqlBackupFilePath, zipBackupFilePath);
+    fs.unlinkSync(sqlBackupFilePath);
   } catch (error) {
     logger.error(`PostgreSQL backup failed: ${error}`);
   }
 }
 
-async function backupMongoDB() {
+async function backupMongoDB(backupPath: string) {
   const uri = config.db.mongodb.uri;
-  const backupPath = config.db.mongodb.backupPath;
 
-  if (!uri || !backupPath) {
-    throw new Error('MongoDB URI or backup path is not defined');
+  if (!uri) {
+    throw new Error('MongoDB URI is not defined.');
   }
 
   try {
@@ -139,18 +141,17 @@ async function backupMongoDB() {
   }
 }
 
-async function backupSQLite() {
+async function backupSQLite(backupPath: string) {
   const filename = config.db.sqlite.filename;
-  const backupFilename = config.db.sqlite.backupFilename;
 
-  if (!filename || !backupFilename) {
-    throw new Error('SQLite filename or backup filename is not defined');
+  if (!filename) {
+    throw new Error('SQLite filename is not defined.');
   }
 
   try {
     await new Promise<void>((resolve, reject) => {
       // Use fs to copy the SQLite database file for backup
-      fs.copyFile(filename, backupFilename, (err) => {
+      fs.copyFile(filename, backupPath, (err) => {
         if (err) reject(err);
         else resolve();
       });

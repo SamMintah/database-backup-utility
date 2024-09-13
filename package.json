@@ -2,38 +2,48 @@
   "name": "database-backup-utility",
   "version": "1.0.0",
   "description": "**Database Backup Utility** A Node.js CLI tool for backing up and restoring multiple types of databases (MySQL, PostgreSQL, MongoDB, SQLite). Supports full, incremental, and differential backups, with options for local and cloud storage (AWS S3, Google Cloud Storage, Azure Blob). Includes automatic backup scheduling, compression, and logging of activities.",
-  "main": "src/cli.ts",
-  "type": "module",
-  "scripts": {
-    "start": "ts-node ./src/cli.ts help",
-    "build": "tsc",
-    "dev": "ts-node ./src/cli.ts",
-    "backup": "ts-node ./src/cli.ts backup",
-    "restore": "ts-node ./src/cli.ts restore",
-    "schedule": "ts-node ./src/cli.ts schedule",
-    "backup:mysql": "ts-node ./src/cli.ts backup -d mysql",
-    "backup:postgres": "ts-node ./src/cli.ts backup -d postgres",
-    "backup:mongodb": "ts-node ./src/cli.ts backup -d mongodb",
-    "backup:sqlite": "ts-node ./src/cli.ts backup -d sqlite",
-    "restore:file": "ts-node ./src/cli.ts restore -f",
-    "schedule:backup": "ts-node ./src/cli.ts schedule -t"
-  },
+  "main": "./src/cli.ts",
+  "private": true,
+ "scripts": {
+  "start": "ts-node ./src/cli.ts --help",
+  "build": "tsc",
+  "dev": "ts-node ./src/cli.ts",
+  "backup": "ts-node ./src/cli.ts backup",
+  "schedule": "ts-node ./src/cli.ts schedule",
+  "backup:mysql": "ts-node ./src/cli.ts backup -d mysql",
+  "backup:postgres": "ts-node ./src/cli.ts backup -d postgres",
+  "backup:mongodb": "ts-node ./src/cli.ts backup -d mongodb",
+  "backup:sqlite": "ts-node ./src/cli.ts backup -d sqlite",
+  "restore": "ts-node ./src/cli.ts restore",
+  "restore:file": "ts-node ./src/cli.ts restore --db",
+  "restore:cloud:aws": "ts-node ./src/cli.ts restore --cloud --provider aws --bucket <bucket-name>",
+  "restore:cloud:gcp": "ts-node ./src/cli.ts restore --cloud --provider gcp --bucket <bucket-name>",
+  "restore:cloud:azure": "ts-node ./src/cli.ts restore --cloud --provider azure --bucket <bucket-name>",
+  "schedule:backup": "ts-node ./src/cli.ts schedule -t"
+},
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@azure/storage-blob": "^12.24.0",
+    "@commander-js/extra-typings": "^12.1.0",
     "@google-cloud/storage": "^7.12.1",
     "@slack/webhook": "^7.0.3",
     "@types/node-cron": "^3.0.11",
+    "archiver": "^7.0.1",
     "aws-sdk": "^2.1691.0",
+    "commander": "^12.1.0",
     "dotenv": "^16.4.5",
     "mongodb": "^6.8.1",
     "mysql": "^2.18.1",
+    "node-cron": "^3.0.3",
     "pg": "^8.12.0",
-    "sqlite3": "^5.1.7"
+    "sqlite3": "^5.1.7",
+    "typescript": "^5.6.2",
+    "unzipper": "^0.12.3"
   },
   "devDependencies": {
+    "@types/archiver": "^6.0.2",
     "@types/aws-sdk": "^0.0.42",
     "@types/commander": "^2.12.0",
     "@types/mongodb": "^4.0.6",
@@ -41,13 +51,8 @@
     "@types/node": "^22.5.4",
     "@types/pg": "^8.11.9",
     "@types/sqlite3": "^3.1.11",
+    "@types/unzipper": "^0.10.10",
     "@types/winston": "^2.4.4",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.6.2"
-  },
-  "ts-node": {
-    "compilerOptions": {
-      "module": "CommonJS"
-    }
+    "ts-node": "^10.9.2"
   }
 }

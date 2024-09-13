@@ -1,10 +1,10 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import fs from 'fs';
+import * as fs from 'fs';
 import { RestoreOptions } from '../type';
 import { config } from '../config/config';
 import logger from '../utils/logger';
-import { decompressFile } from '../backup/compress';
+import { decompressZipBackup } from '../backup/compress';
 import { createCloudStorageProvider } from '../cloud/storageFactory';
 
 const execPromise = promisify(exec);
@@ -12,25 +12,38 @@ const execPromise = promisify(exec);
 export async function restoreDatabase(options: RestoreOptions) {
   try {
     const { db, cloud } = options;
+    const globalBackupPath = config.db.backupPath;
+
+    if (!globalBackupPath) {
+      throw new Error('Global backup file path is not defined in the config.');
+    }
 
     if (cloud) {
       await downloadFromCloud(cloud);
     }
 
-    await decompressBackupFiles();
+    const extractToPath = `${globalBackupPath}_extracted`;
+    await decompressZipBackup(globalBackupPath, extractToPath);
+
+    // Use the extracted path for restoration if it exists
+    const restorePath = fs.existsSync(extractToPath) ? extractToPath : globalBackupPath;
+
+    if (!fs.existsSync(restorePath)) {
+      throw new Error(`Backup file does not exist at path: ${restorePath}`);
+    }
 
     switch (db.toLowerCase()) {
       case 'mysql':
-        await restoreMySQL();
+        await restoreMySQL(restorePath);
         break;
       case 'postgres':
-        await restorePostgres();
+        await restorePostgres(restorePath);
         break;
       case 'mongodb':
-        await restoreMongoDB();
+        await restoreMongoDB(restorePath);
         break;
       case 'sqlite':
-        await restoreSQLite();
+        await restoreSQLite(restorePath);
         break;
       default:
         throw new Error(`Unsupported database type: ${db}`);
@@ -41,7 +54,7 @@ export async function restoreDatabase(options: RestoreOptions) {
     logger.error(`Restore failed: ${error}`);
   }
 }
-// Function to download backup from cloud storage
+
 async function downloadFromCloud(cloud: {
   bucketName?: string;
   provider?: string;
@@ -52,15 +65,10 @@ async function downloadFromCloud(cloud: {
 
   const cloudStorage = createCloudStorageProvider();
   const provider = cloud.provider.toLowerCase();
-  const backupFileName = 'backup.gz';
-
+  const backupFileName = 'backup.gz'; 
   switch (provider) {
     case 's3':
-      await cloudStorage.download(backupFileName, cloud.bucketName || '');
-      break;
     case 'google':
-      await cloudStorage.download(backupFileName, cloud.bucketName || '');
-      break;
     case 'azure':
       await cloudStorage.download(backupFileName, cloud.bucketName || '');
       break;
@@ -68,79 +76,84 @@ async function downloadFromCloud(cloud: {
       throw new Error(`Unsupported cloud provider: ${provider}`);
   }
 }
+// Restore functions for each database type
+async function restoreMySQL(backupPath: string) {
+  const { host, user, password, database } = config.db.mysql;
 
-async function restoreMySQL() {
-  const { host, user, password, database, backupPath } = config.db.mysql;
-
-  if (!host || !user || !password || !database || !backupPath) {
-    throw new Error('MySQL configuration or backup path is not defined');
+  if (!host || !user || !password || !database) {
+    throw new Error('MySQL configuration is not complete.');
   }
 
   try {
-    // Construct the mysql command
     const command = `mysql -h ${host} -u ${user} -p${password} ${database} < ${backupPath}`;
-
-    // Execute the mysql command
-    await execPromise(command);
-
+    const { stdout, stderr } = await execPromise(command);
+    if (stdout) logger.info(`MySQL restore output: ${stdout}`);
+    if (stderr) logger.error(`MySQL restore error: ${stderr}`);
     logger.info('MySQL database restored successfully');
   } catch (error) {
     logger.error(`MySQL restore failed: ${error}`);
   }
 }
 
-async function restorePostgres() {
+async function restorePostgres(backupPath: string) {
   const { host, user, password, database } = config.db.postgres;
-  const backupPath = config.db.postgres.backupPath;
 
-  if (!host || !user || !password || !database || !backupPath) {
-    throw new Error('PostgreSQL configuration or backup path is not defined');
+  if (!host || !user || !password || !database) {
+    throw new Error('PostgreSQL configuration is not complete.');
   }
 
   try {
-    // Construct the pg_restore command
-    const command = `PGPASSWORD=${password} pg_restore -h ${host} -U ${user} -d ${database} ${backupPath}`;
+    if (!fs.existsSync(backupPath)) {
+      throw new Error(`Backup file does not exist at path: ${backupPath}`);
+    }
 
-    // Execute the pg_restore command
-    await execPromise(command);
+    const fileExtension = backupPath.split('.').pop()?.toLowerCase();
+    let command: string;
 
+    if (fileExtension === 'sql') {
+      command = `PGPASSWORD=${password} psql -h ${host} -U ${user} -d ${database} -f ${backupPath}`;
+    } else {
+      command = `PGPASSWORD=${password} pg_restore -h ${host} -U ${user} -d ${database} ${backupPath}`;
+    }
+
+    const { stdout, stderr } = await execPromise(command);
+    if (stdout) logger.info(`PostgreSQL restore output: ${stdout}`);
+    if (stderr) logger.error(`PostgreSQL restore error: ${stderr}`);
     logger.info('PostgreSQL database restored successfully');
   } catch (error) {
     logger.error(`PostgreSQL restore failed: ${error}`);
+    throw error; 
   }
 }
 
-async function restoreMongoDB() {
+async function restoreMongoDB(backupPath: string) {
   const uri = config.db.mongodb.uri;
-  const backupPath = config.db.mongodb.backupPath;
-  if (!uri || !backupPath) {
-    throw new Error('MongoDB URI or backup path is not defined');
+
+  if (!uri) {
+    throw new Error('MongoDB URI is not defined.');
   }
 
   try {
-    // Construct the mongorestore command
     const command = `mongorestore --uri="${uri}" ${backupPath}`;
-
-    // Execute the mongorestore command
-    await execPromise(command);
+    const { stdout, stderr } = await execPromise(command);
+    if (stdout) logger.info(`MongoDB restore output: ${stdout}`);
+    if (stderr) logger.error(`MongoDB restore error: ${stderr}`);
     logger.info('MongoDB database restored successfully');
   } catch (error) {
     logger.error(`MongoDB restore failed: ${error}`);
   }
 }
 
-async function restoreSQLite() {
+async function restoreSQLite(backupPath: string) {
   const filename = config.db.sqlite.filename;
-  const backupFilename = config.db.sqlite.backupFilename;
-  if (!filename || !backupFilename) {
-    throw new Error('SQLite filename or backup filename is not defined');
-  }
+
   if (!filename) {
-    throw new Error('SQLite filename is not defined');
+    throw new Error('SQLite filename is not defined.');
   }
+
   try {
     await new Promise<void>((resolve, reject) => {
-      fs.copyFile(backupFilename, filename, (err) => {
+      fs.copyFile(backupPath, filename, (err) => {
         if (err) reject(err);
         else resolve();
       });
@@ -149,20 +162,5 @@ async function restoreSQLite() {
     logger.info('SQLite database restored successfully');
   } catch (error) {
     logger.error(`SQLite restore failed: ${error}`);
-  }
-}
-
-async function decompressBackupFiles() {
-  const backupPaths = [
-    config.db.mysql.backupPath,
-    config.db.postgres.backupPath,
-    config.db.mongodb.backupPath,
-    config.db.sqlite.backupFilename
-  ];
-
-  for (const backupPath of backupPaths) {
-    if (backupPath && fs.existsSync(`${backupPath}.gz`)) {
-      await decompressFile(`${backupPath}.gz`);
-    }
   }
 }

@@ -1,31 +1,39 @@
-// src/backup/compress.ts
-import * as zlib from 'zlib';
+// src/backup/zipCompress.ts
+import archiver from 'archiver';
 import * as fs from 'fs';
+import * as path from 'path';
+import * as unzipper from 'unzipper';
 
-export function compressFile(filePath: string): Promise<void> {
+// Function to create a zip backup
+export function createZipBackup(sourcePath: string, outputPath: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const gzip = zlib.createGzip();
-    const input = fs.createReadStream(filePath);
-    const output = fs.createWriteStream(`${filePath}.gz`);
+    const output = fs.createWriteStream(outputPath);
+    const archive = archiver('zip', { zlib: { level: 9 } });
 
-    input.pipe(gzip).pipe(output).on('finish', () => {
+    output.on('close', () => {
       resolve();
-    }).on('error', (err) => {
+    });
+
+    archive.on('error', (err) => {
       reject(err);
     });
+
+    archive.pipe(output);
+    archive.file(sourcePath, { name: path.basename(sourcePath) });
+    archive.finalize();
   });
 }
 
-export function decompressFile(filePath: string): Promise<void> {
+// Function to decompress a zip backup
+export function decompressZipBackup(zipFilePath: string, extractToPath: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const gunzip = zlib.createGunzip();
-    const input = fs.createReadStream(filePath);
-    const output = fs.createWriteStream(filePath.replace('.gz', ''));
-
-    input.pipe(gunzip).pipe(output).on('finish', () => {
-      resolve();
-    }).on('error', (err) => {
-      reject(err);
-    });
+    fs.createReadStream(zipFilePath)
+      .pipe(unzipper.Extract({ path: extractToPath }))
+      .on('close', () => {
+        resolve();
+      })
+      .on('error', (err) => {
+        reject(err);
+      });
   });
 }

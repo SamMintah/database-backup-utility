@@ -1,5 +1,5 @@
 // src/cloud/storageFactory.ts
-import AWS from 'aws-sdk';
+import * as AWS from 'aws-sdk';
 import * as fs from 'fs';
 import * as path from 'path';
 import { Storage as GoogleStorage } from '@google-cloud/storage';

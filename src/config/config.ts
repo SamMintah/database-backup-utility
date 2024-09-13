@@ -1,35 +1,33 @@
 // src/config/config.ts
-import dotenv from 'dotenv';
+import * as dotenv from 'dotenv';
 
 dotenv.config();
 
 export const config = {
   db: {
+    backupPath: process.env.BACKUP_PATH || '_backup/', 
+
     mysql: {
       host: process.env.MYSQL_HOST || 'localhost',
       user: process.env.MYSQL_USER || 'root',
       password: process.env.MYSQL_PASSWORD || '',
-      database: process.env.MYSQL_DATABASE || 'test',
-      backupPath: process.env.MYSQL_BACKUP_PATH || 'backup.sql'
+      database: process.env.MYSQL_DATABASE || 'test'
     },
     postgres: {
       host: process.env.POSTGRES_HOST || 'localhost',
       user: process.env.POSTGRES_USER || 'user',
       password: process.env.POSTGRES_PASSWORD || 'password',
-      database: process.env.POSTGRES_DATABASE || 'test',
-      backupPath: process.env.POSTGRES_BACKUP_PATH || 'backup/'
+      database: process.env.POSTGRES_DATABASE || 'test'
     },
     mongodb: {
-      uri: process.env.MONGODB_URI || 'mongodb://localhost:27017',
-      backupPath: process.env.MONGODB_BACKUP_PATH || 'backup/'
+      uri: process.env.MONGODB_URI || 'mongodb://localhost:27017'
     },
     sqlite: {
-      filename: process.env.SQLITE_DATABASE || 'test.db',
-      backupFilename: process.env.SQLITE_BACKUP_DATABASE || 'backup.db'
+      filename: process.env.SQLITE_DATABASE || 'test.db'
     }
   },
   cloud: {
-    provider: process.env.CLOUD_PROVIDER || 's3', // 's3', 'google', 'azure'
+    provider: process.env.CLOUD_PROVIDER || 's3',
     s3: {
       bucket: process.env.S3_BUCKET,
       region: process.env.S3_REGION,
