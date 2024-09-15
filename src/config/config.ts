@@ -5,7 +5,7 @@ dotenv.config();
 
 export const config = {
   db: {
-    backupPath: process.env.BACKUP_PATH || '_backup/', 
+    backupPath: process.env.BACKUP_PATH || '_backup', 
 
     mysql: {
       host: process.env.MYSQL_HOST || 'localhost',
