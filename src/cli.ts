@@ -126,7 +126,7 @@ Example usage:
   $ db-backup-utility restore --file /path/to/backup
   $ db-backup-utility schedule --time "0 0 * * *" --db mysql
 
-For more information, visit https://github.com/your-repo
+For more information, visit https://github.com/SamMintah/database-backup-utility/tree/main
 `);
 
 // Display help after error
