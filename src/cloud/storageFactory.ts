@@ -135,6 +135,10 @@ export function createAzureProvider() {
       } catch (error) {
         throw new Error(`Azure download failed: ${error}`);
       }
+    },
+    
+    list: async (bucket?: string) => {
+      
     }
   };
 }
@@ -150,3 +154,7 @@ async function streamToBuffer(
     readableStream.on('error', reject);
   });
 }
+function list() {
+  throw new Error('Function not implemented.');
+}
+
