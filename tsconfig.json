@@ -15,7 +15,7 @@
   },
   "include": [
     "src/**/*.ts"
-  ],
+, "src/utils/configWizard.js"  ],
   "exclude": [
     "node_modules"
   ]
