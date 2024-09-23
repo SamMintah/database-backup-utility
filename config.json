@@ -4,8 +4,11 @@
     "host": "localhost",
     "port": 5432,
     "username": "test",
-    "password": "newtest",
+    "password": "test",
     "database": "test"
   },
-  "backupPath": "/Users/sam/Documents/project/database-backup-utility/backups"
+  "backupPath": "/Users/sam/Documents/project/database-backup-utility/backups",
+  "slackUsers": [
+    "sam.mintah01@gmail.com"
+  ]
 }

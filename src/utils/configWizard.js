@@ -132,6 +132,17 @@ export async function configWizard() {
         return true;
       },
     },
+    {
+      type: 'input',
+      name: 'slackUsers',
+      message: 'Enter Slack handles or email addresses for notifications (comma-separated):',
+      validate: (input) => {
+        if (!input) {
+          return 'At least one Slack handle or email address is required.';
+        }
+        return true;
+      },
+    },
   ];
 
   const answers = await inquirer.prompt(questions);
@@ -156,6 +167,7 @@ export async function configWizard() {
         }
       : undefined,
     backupPath: answers.backupPath,
+    slackUsers: answers.slackUsers.split(',').map(user => user.trim()), 
   };
 
   const configPath = path.join(process.cwd(), 'config.json');
