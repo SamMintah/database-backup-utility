@@ -19,6 +19,18 @@ program
   .version('1.0.0')
   .usage('[command] [options]');
 
+program
+  .command('configure')
+  .description('Run the configuration wizard for database setup')
+  .action(async () => {
+    try {
+      await configWizard();
+    } catch (error) {
+      logger.error(`Configuration failed: ${error}`);
+    }
+  });
+
+
 // Backup command
 program
   .command('backup')
@@ -192,17 +204,6 @@ program
     }
   )
   .showHelpAfterError('(add --help for additional information)');
-
-program
-  .command('configure')
-  .description('Run the configuration wizard')
-  .action(async () => {
-    try {
-      await configWizard();
-    } catch (error) {
-      logger.error(`Configuration failed: ${error}`);
-    }
-  });
 
 program
   .command('list')

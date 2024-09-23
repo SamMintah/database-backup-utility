@@ -5,9 +5,8 @@
   "main": "./src/cli.ts",
   "private": true,
   "scripts": {
-    "start": "ts-node ./src/cli.ts",
     "build": "tsc",
-    "dev": "ts-node ./src/cli.ts",
+    "help": "ts-node ./src/cli.ts",
     "backup": "ts-node ./src/cli.ts backup",
     "config": "ts-node src/cli.ts configure",
     "schedule": "ts-node ./src/cli.ts schedule",
